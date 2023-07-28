@@ -23,7 +23,7 @@ type BotKeys struct {
 	accessSecret   string
 	bearerToken    string
 }
-
+//Toma las claves necesarias para el bot desde el txt indicado
 func readBotKeysFromFile(filePath string) (*BotKeys, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -58,6 +58,7 @@ func readBotKeysFromFile(filePath string) (*BotKeys, error) {
 	return botKeys, nil
 }
 
+//Usa las claves para crear un httpClient necesario para el posteo del tweet
 func oauth1Config(consumerKey, consumerSecret, accessToken, accessSecret string) *http.Client {
 	config := oauth1.NewConfig(consumerKey, consumerSecret)
 	token := oauth1.NewToken(accessToken, accessSecret)
@@ -65,6 +66,7 @@ func oauth1Config(consumerKey, consumerSecret, accessToken, accessSecret string)
 	return httpClient
 }
 
+//Usa los requerimientos para crear y enviar el request, devuelve la respuesta del servidor en formato json
 func postTweet(endpoint string, tweetJSON []byte, client *http.Client,Keys *BotKeys) ([]byte, error) {
 	req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(tweetJSON))
 	if err != nil {
@@ -88,6 +90,7 @@ func postTweet(endpoint string, tweetJSON []byte, client *http.Client,Keys *BotK
 	return responseData, nil
 }
 
+//Transforma el texto en el json necesario para el posteo del tweet
 func textToTweetJSON(tweetText string) []byte {
 	tweetData := map[string]string{"text": tweetText}
 	tweetJSON, err := json.Marshal(tweetData)
@@ -97,6 +100,7 @@ func textToTweetJSON(tweetText string) []byte {
 	return tweetJSON
 }
 
+//Escribe la respuesta del servidor en un archivo .json
 func writeResponseToFile(responseData []byte) error {
 	// Create a file with the current timestamp as its name
 	fileName := "responses/"+time.Now().Format("2006-01-02-15-04-05") + ".json"
@@ -117,6 +121,44 @@ func writeResponseToFile(responseData []byte) error {
 	return nil
 }
 
+//Se encarga de tuitear todas las veces que el usuario lo desee
+func loopTuitero(endpoint string, config *http.Client,botKeys *BotKeys){
+	keepRunning := true
+	var tweetText string
+	//tweetText = "Hola Twitter! Este es mi primer tweet automatizado de la cuenta 😎"
+	for keepRunning {
+		fmt.Print("\nIngrese el tweet que desea publicar: ")
+		inputReader := bufio.NewReader(os.Stdin)
+		tweetText,_ = inputReader.ReadString('\n')
+
+		resp, err := postTweet(endpoint, textToTweetJSON(tweetText), config, botKeys)
+		if err != nil {
+			log.Fatalf("Error posting tweet: %v\n", err)
+		}
+		//Escribo la respuesta en un archivo
+		err = writeResponseToFile(resp)
+		if err != nil {
+			log.Fatalf("Error writing response to file: %v\n", err)
+		}
+
+		fmt.Printf("\n	Tweet exitoso!\n	Respuesta del servidor: %s\n", resp)
+
+		fmt.Printf("\nDesea seguir twiteando? Y/N: ")
+		aux, _ := inputReader.ReadString('\n')
+		aux = strings.TrimSpace(strings.ToUpper(aux)) // Trim whitespace and convert to uppercase
+
+		switch aux {
+		case "Y":
+			continue
+		case "N":
+			keepRunning = false
+		default:
+			fmt.Println("\n	Input no reconocida, directamente cierro el programa")
+			keepRunning = false
+		}
+	}
+}
+
 func main() {
 	fmt.Println("Iniciando programa...")
 
@@ -128,25 +170,8 @@ func main() {
 
 	config := oauth1Config(botKeys.consumerKey, botKeys.consumerSecret, botKeys.accessToken, botKeys.accessSecret)
 	endpoint := "https://api.twitter.com/2/tweets"
-
-	var tweetText string
-	//tweetText = "Hola Twitter! Este es mi primer tweet automatizado de la cuenta 😎"
 	
-	fmt.Print("Ingrese el tweet que desea publicar: ")
-	inputReader := bufio.NewReader(os.Stdin)
-	tweetText,_ = inputReader.ReadString('\n')
-	fmt.Printf("You entered: %s\n", tweetText)
+	loopTuitero(endpoint,config,botKeys)
 
-	resp, err := postTweet(endpoint, textToTweetJSON(tweetText), config, botKeys)
-	if err != nil {
-		log.Fatalf("Error posting tweet: %v\n", err)
-	}
-	//Escribo la respuesta en un archivo
-	err = writeResponseToFile(resp)
-	if err != nil {
-		log.Fatalf("Error writing response to file: %v\n", err)
-	}
-
-	fmt.Printf("Respuesta del servidor: %s\n", resp)
 	fmt.Println("Finalizando ejecución, adiós!")
 }
