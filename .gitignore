@@ -2,3 +2,4 @@
 *.exe
 claves.txt
 responses/
+*.db

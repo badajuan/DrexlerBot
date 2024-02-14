@@ -121,7 +121,10 @@ func writeResponseToFile(responseData []byte) error {
 	return nil
 }
 
-//Se encarga de tuitear todas las veces que el usuario lo desee
+/*Se encarga de tuitear todas las veces que el usuario lo desee
+	Input: Endpoint + Claves
+	Output: Se encarga de enviar todos los tweets que sean necesarios al servidor
+*/
 func loopTuitero(endpoint string, config *http.Client,botKeys *BotKeys){
 	keepRunning := true
 	var tweetText string

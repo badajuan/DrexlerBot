@@ -2,7 +2,7 @@
 
 ## **Descripción**
 
-### Este es un bot de Twitter bastante simple desarrollado en Golang que permite publicar tweets automáticamente desde la consola de comandos a una cuenta de desarrollador de Twitter. Actualmente funciona en un loop continuo que pide que ingreses el texto del tweet y lo publica en tu cuenta usando la API oficial de Twitter (andando al 07/2023).<br> Además guarda las respuestas del servidor en archivos JSON con la fecha y hora de la publicación.<br><br>
+Este es un bot de Twitter bastante simple desarrollado en Golang que permite publicar tweets automáticamente desde la consola de comandos a una cuenta de desarrollador de Twitter. Actualmente funciona en un loop continuo que pide que ingreses el texto del tweet y lo publica en tu cuenta usando la API oficial de Twitter (andando al 07/2023).<br> Además guarda las respuestas del servidor en archivos JSON con la fecha y hora de la publicación.<br><br>
 #### *Posteriores actualizaciones pueden incluir el uso de una pequeña base de datos para almacenar frases a tuitear*<br><br> 
 ---
 
