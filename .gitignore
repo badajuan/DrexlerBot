@@ -1,5 +1,6 @@
 *.json
 *.exe
-claves.txt
+*.txt
 responses/
 *.db
+lyrics/
