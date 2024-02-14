@@ -3,9 +3,12 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -20,21 +23,29 @@ func main() {
 	// Create a bufio reader for user input
 	reader := bufio.NewReader(os.Stdin)
 
-	// Take user input for artist and song
+	// Take user input for artist
 	artist := getUserInput(reader, "Enter the artist: ")
-	song := getUserInput(reader, "Enter the song: ")
 
-	// Construct the URL with user input
-	url := ArtistSongToURL(artist, song)
+	// Construct the search URL with the user input
+	searchURL := constructSearchURL(artist)
 
-	// Make the HTTP request and get the response
-	response := makeRequest(url)
+	songTitles := filterHTML(searchURL, artist)
 
-	// Parse the response to extract lyrics
-	lyrics := parseLyrics(response)
+	for _, song := range songTitles {
+		// Construct the URL with user input
+		url := ArtistSongToURL(artist, song)
 
-	// Save lyrics to a file
-	if lyrics!=""{
+		// Make the HTTP request and get the response
+		response := makeRequest(url)
+
+		// Parse the response to extract lyrics
+		lyrics := parseLyrics(response)
+
+		// Save lyrics to a file
+		if lyrics==""{
+			fmt.Printf("Lyrics not found in response. URL:%s\n",url)
+			continue
+		}
 		saveLyricsToFile(artist, song, lyrics)
 	}
 }
@@ -42,7 +53,7 @@ func main() {
 func getUserInput(reader *bufio.Reader, prompt string) string {
 	fmt.Print(prompt)
 	input, _ := reader.ReadString('\n')
-	return strings.Title(strings.ToLower(strings.TrimSpace(input)))
+	return strings.TrimSpace(input)
 }
 
 func ArtistSongToURL(artist, song string) string {
@@ -86,7 +97,6 @@ func parseLyrics(response string) string {
 	endIndex := strings.Index(response, endTag)
 
 	if startIndex == -1 || endIndex == -1 {
-		fmt.Println("Lyrics not found in response.")
 		return ""
 	}
 
@@ -97,7 +107,11 @@ func parseLyrics(response string) string {
 }
 
 func saveLyricsToFile(artist, song, lyrics string) {
+	song = strings.Title(strings.ToLower(song))
+	re := regexp.MustCompile(`[?<>:"/\\|*]`)
+	song = re.ReplaceAllString(song, "")
 	fileName := strings.ReplaceAll(fmt.Sprintf("lyrics/%s - %s.txt", artist, song)," ", "")
+	
 
 	// Create or overwrite the file
 	file, err := os.Create(fileName)
@@ -115,4 +129,54 @@ func saveLyricsToFile(artist, song, lyrics string) {
 	}
 
 	fmt.Println("Lyrics saved to", fileName)
+}
+
+func constructSearchURL(artist string) string {
+	// Replace spaces in the artist with '+'
+	artist = strings.ReplaceAll(artist, " ", "+")
+	return fmt.Sprintf("http://www.chartlyrics.com/search.aspx?q=%s", artist)
+}
+
+func printHTMLPage(urlString string) string {
+	// Make an HTTP request to the URL
+	response, err := http.Get(urlString)
+	if err != nil {
+		fmt.Println("Error making request:", err)
+		return ""
+	}
+	defer response.Body.Close()
+
+	// Read the HTML page
+	htmlPage, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		fmt.Println("Error reading response body:", err)
+		return ""
+	}
+
+	return string(htmlPage)
+}
+
+func filterHTML(urlString, artist string) []string {
+	// Get the HTML content
+	htmlContent := printHTMLPage(urlString)
+
+	// Define a regular expression for the desired format
+	pattern := fmt.Sprintf(`([^\/]+).aspx">%s`,artist)
+	re := regexp.MustCompile(pattern)
+
+	// Find all matches in the HTML content
+	matches := re.FindAllStringSubmatch(htmlContent, -1)
+
+	// Extract the matched text
+	var songTitles []string
+	for _, match := range matches {
+		songTitle, err := url.QueryUnescape(match[1])
+		if err != nil {
+			fmt.Println("Error decoding URL:", err)
+			return nil
+		}
+		songTitles = append(songTitles, songTitle)
+	}
+
+	return songTitles
 }
